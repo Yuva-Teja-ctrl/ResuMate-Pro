@@ -1,0 +1,33 @@
+# ---- Web framework ----
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.17
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# ---- Database ----
+sqlalchemy==2.0.36
+# Postgres driver (used in production / docker-compose)
+psycopg2-binary==2.9.10
+# pgvector ORM integration
+pgvector==0.3.6
+
+# ---- Auth / security ----
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose[cryptography]==3.3.0
+
+# ---- Resume parsing ----
+pypdf==5.1.0
+
+# ---- AI / embeddings (free, local fallback) ----
+sentence-transformers==3.3.1
+numpy==2.2.0
+
+# ---- Optional cloud LLM providers (only used if API key is set) ----
+openai==1.57.2
+
+# ---- Dev / testing ----
+pytest==8.3.4
+httpx==0.28.1

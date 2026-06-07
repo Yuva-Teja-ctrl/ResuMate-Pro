@@ -1,0 +1,49 @@
+# One command to run the whole stack:  docker compose up --build
+#
+#   db       -> Postgres (pgvector image, so the embedding column can be
+#               upgraded to a native vector type later with no infra change)
+#   backend  -> FastAPI API on :8000
+#   frontend -> Next.js app on :3000
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: resumate
+      POSTGRES_PASSWORD: resumate
+      POSTGRES_DB: resumate
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resumate"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://resumate:resumate@db:5432/resumate
+      SECRET_KEY: please-change-me-in-production
+      CORS_ORIGINS: http://localhost:3000
+      AI_PROVIDER: ${AI_PROVIDER:-local}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
