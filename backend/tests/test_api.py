@@ -139,3 +139,20 @@ def test_weights_no_preferences(client, auth_headers):
     assert sb["education_score"] == 0.0
     assert sb["certification_score"] == 0.0
     assert sb["skills_score"] == cand["score"]
+
+
+
+def test_unreadable_pdf_returns_clean_error(client, auth_headers):
+    """A malformed/image-only PDF must return a clear error, not a 500."""
+    r = client.post(
+        "/api/jobs",
+        json={"title": "X", "description": "Python", "required_skills": "Python",
+              "shortlist_count": 1},
+        headers=auth_headers,
+    )
+    job_id = r.json()["id"]
+    # Random bytes presented as a PDF -> no extractable text.
+    files = {"file": ("bad.pdf", io.BytesIO(os.urandom(400)), "application/pdf")}
+    r = client.post(f"/api/jobs/{job_id}/candidates", files=files, headers=auth_headers)
+    assert r.status_code == 422
+    assert "extract" in r.json()["detail"].lower()

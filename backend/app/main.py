@@ -6,8 +6,9 @@ initializes the database on startup.
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.routes import auth, candidates, jobs
 from app.core.config import settings
@@ -42,6 +43,31 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(jobs.router)
 app.include_router(candidates.router)
+
+
+@app.middleware("http")
+async def cors_safe_errors(request: Request, call_next):
+    """
+    Guarantee CORS headers on *every* response, including unhandled 500s.
+
+    Starlette's default 500 handler runs above the CORS middleware, so an
+    unhandled exception would otherwise return a response with no CORS headers
+    -- which browsers surface as a confusing "Load failed" instead of the real
+    error. This wrapper catches anything that slips through and re-attaches the
+    appropriate Access-Control-Allow-Origin header.
+    """
+    try:
+        return await call_next(request)
+    except Exception:
+        origins = settings.cors_origins_list
+        origin = request.headers.get("origin", "")
+        allow = "*" if "*" in origins else (origin if origin in origins else "")
+        headers = {"Access-Control-Allow-Origin": allow} if allow else {}
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error. Please try again."},
+            headers=headers,
+        )
 
 
 @app.get("/health", tags=["health"])

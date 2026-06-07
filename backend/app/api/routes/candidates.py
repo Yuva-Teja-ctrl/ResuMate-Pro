@@ -90,27 +90,47 @@ async def upload_candidate(
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # 1) Parse the resume into a structured profile.
-    profile = parse_resume(file_bytes, file.content_type or "")
-    resume_text = profile.get("raw_text", "")
-    skills = profile.get("skills", [])
-    education = profile.get("education", {}) or {}
-    certifications = profile.get("certifications", [])
+    try:
+        # 1) Parse the resume into a structured profile.
+        profile = parse_resume(file_bytes, file.content_type or "")
+        resume_text = profile.get("raw_text", "")
 
-    # 2) Embed the resume and score it against the job using the recruiter's
-    #    filters (required skills + optional experience/education/cert prefs).
-    resume_embedding = embed_resume(resume_text)
-    match = compute_match(
-        job_description=job.description,
-        job_embedding=deserialize(job.embedding),
-        required_skills=job.required_skills,
-        resume_text=resume_text,
-        resume_embedding=resume_embedding,
-        profile=profile,
-        min_experience=job.min_experience,
-        education_pref=job.education_pref,
-        certifications=job.certifications,
-    )
+        # A scanned/image-only or encrypted PDF yields no extractable text.
+        if not resume_text.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Could not extract any text from this file. It may be "
+                "a scanned/image-only or password-protected PDF. Please upload "
+                "a text-based PDF.",
+            )
+
+        skills = profile.get("skills", [])
+        education = profile.get("education", {}) or {}
+        certifications = profile.get("certifications", [])
+
+        # 2) Embed the resume and score it against the job using the recruiter's
+        #    filters (required skills + optional experience/education/cert prefs).
+        resume_embedding = embed_resume(resume_text)
+        match = compute_match(
+            job_description=job.description,
+            job_embedding=deserialize(job.embedding),
+            required_skills=job.required_skills,
+            resume_text=resume_text,
+            resume_embedding=resume_embedding,
+            profile=profile,
+            min_experience=job.min_experience,
+            education_pref=job.education_pref,
+            certifications=job.certifications,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Convert any unexpected failure into a proper HTTP error so the
+        # response still carries CORS headers (otherwise the browser just
+        # reports a generic "Load failed").
+        raise HTTPException(
+            status_code=500, detail=f"Failed to process resume: {exc}"
+        ) from exc
 
     # 3) Persist everything.
     candidate = Candidate(
