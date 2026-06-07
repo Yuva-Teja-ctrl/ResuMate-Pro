@@ -9,6 +9,15 @@ questions** tailored to each candidate.
 > with a proper API, database, authentication, a real frontend, containerization,
 > and CI so it reflects how a production system is actually structured.
 
+## 🔗 Live Demo
+
+- **App:** _<!-- TODO: paste your Vercel frontend URL here -->_
+- **API docs:** _<!-- TODO: paste your Render backend URL + /docs here -->_
+
+> The demo backend runs in **lite mode** (a torch-free embedding backend) so it
+> fits comfortably on free hosting tiers. First request after idle may be slow
+> while the free instance wakes up.
+
 ---
 
 ## ✨ Features
@@ -148,6 +157,40 @@ pytest -q
 CI (GitHub Actions) runs backend lint + tests and a frontend build on every push.
 
 ---
+
+## 🚢 Deployment (free tier)
+
+Deploy the **backend + database on Render** and the **frontend on Vercel**.
+
+### 1. Backend + Postgres → Render (via included `render.yaml`)
+
+1. Push this repo to GitHub (done).
+2. Go to [Render](https://render.com) → **New** → **Blueprint** → connect this repo.
+3. Render reads `render.yaml` and provisions:
+   - a free **Postgres** database, and
+   - the **API** web service (installs `requirements-deploy.txt`, runs in torch-free `lite` mode).
+4. When it finishes, copy the service URL, e.g. `https://resumate-pro-api.onrender.com`.
+   Visit `/docs` on it to confirm the API is live.
+
+### 2. Frontend → Vercel
+
+1. Go to [Vercel](https://vercel.com) → **Add New Project** → import this repo.
+2. Set **Root Directory** to `frontend`.
+3. Add an environment variable:
+   - `NEXT_PUBLIC_API_URL` = your Render backend URL (from step 1, no trailing slash).
+4. Deploy. Copy the resulting URL, e.g. `https://resumate-pro.vercel.app`.
+
+### 3. Wire them together
+
+- Paste both URLs into the **Live Demo** section at the top of this README.
+- (Optional, tighter security) On Render, set `CORS_ORIGINS` to your exact Vercel
+  URL instead of `*`, then redeploy.
+
+> **Why lite mode for the demo?** The full neural embedding backend
+> (sentence-transformers + PyTorch) needs more memory than free tiers provide.
+> The app auto-detects this and uses a torch-free hashing embedding, so the demo
+> stays free and fast. Run the full neural backend locally or on a larger
+> instance by installing `requirements.txt` (no code change needed).
 
 ## 🗺️ Roadmap / possible extensions
 

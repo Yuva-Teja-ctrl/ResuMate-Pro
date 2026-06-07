@@ -35,13 +35,25 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    # Embedding backend:
+    #   "auto"   -> use neural (sentence-transformers) if installed, else lite
+    #   "neural" -> force sentence-transformers (needs torch; best quality)
+    #   "lite"   -> torch-free hashing embedding (tiny memory, for free hosting)
+    EMBEDDING_BACKEND: str = "auto"
 
     @property
     def database_url(self) -> str:
         """Return a usable DB URL, defaulting to a local SQLite file."""
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        return "sqlite:///./resumate.db"
+        if not self.DATABASE_URL:
+            return "sqlite:///./resumate.db"
+        # Managed Postgres providers (e.g. Render, Heroku) hand out URLs that
+        # begin with "postgres://"; SQLAlchemy 2.x needs an explicit driver.
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return url
 
     @property
     def is_postgres(self) -> bool:

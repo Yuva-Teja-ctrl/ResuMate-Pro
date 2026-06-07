@@ -1,0 +1,34 @@
+# Render Blueprint — deploys the backend API + a free Postgres database.
+# Usage: push this repo to GitHub, then in Render: New > Blueprint > pick this repo.
+# (Deploy the Next.js frontend separately on Vercel — see README "Deployment".)
+services:
+  - type: web
+    name: resumate-pro-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Torch-free embedding so the service fits in free-tier memory.
+      - key: EMBEDDING_BACKEND
+        value: lite
+      - key: AI_PROVIDER
+        value: local
+      - key: SECRET_KEY
+        generateValue: true
+      # Allow any origin for the public demo (we use Bearer tokens, not cookies).
+      # For production, set this to your exact frontend URL instead.
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resumate-pro-db
+          property: connectionString
+
+databases:
+  - name: resumate-pro-db
+    plan: free

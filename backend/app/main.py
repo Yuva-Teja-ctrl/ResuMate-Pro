@@ -32,7 +32,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    # Browsers forbid credentials with a wildcard origin. We use Bearer tokens
+    # (not cookies), so it's safe to disable credentials when allowing "*".
+    allow_credentials="*" not in settings.cors_origins_list,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -45,11 +47,14 @@ app.include_router(candidates.router)
 @app.get("/health", tags=["health"])
 def health():
     """Liveness probe + shows which AI provider is active."""
+    from app.services.ai.embeddings import active_backend
+
     return {
         "status": "ok",
         "app": settings.APP_NAME,
         "environment": settings.ENVIRONMENT,
         "ai_provider": settings.AI_PROVIDER,
+        "embedding_backend": active_backend(),
         "database": "postgres" if settings.is_postgres else "sqlite",
     }
 

@@ -1,0 +1,32 @@
+# ============================================================
+# Slim dependency set for free-tier deployment (Render, etc).
+# Excludes torch / sentence-transformers so the build is small and
+# memory-light. The app automatically uses the torch-free "lite"
+# embedding backend when sentence-transformers is not installed.
+# ============================================================
+
+# ---- Web framework ----
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.17
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# ---- Database ----
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+
+# ---- Auth / security ----
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose[cryptography]==3.3.0
+
+# ---- Resume parsing ----
+pypdf==5.1.0
+
+# ---- Math (lite embedding) ----
+numpy==2.2.0
+
+# ---- Optional cloud LLM (only used if OPENAI_API_KEY is set) ----
+openai==1.57.2
