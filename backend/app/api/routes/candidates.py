@@ -132,24 +132,26 @@ async def upload_candidate(
             status_code=500, detail=f"Failed to process resume: {exc}"
         ) from exc
 
-    # 3) Persist everything.
+    # 3) Persist everything. Truncate to the DB column limits so an unusual
+    #    resume (e.g. a very long extracted "name" line) can't overflow a
+    #    VARCHAR column and fail the insert on Postgres.
     candidate = Candidate(
         job_id=job.id,
-        name=profile.get("name", ""),
-        email=profile.get("email", ""),
-        phone=profile.get("phone", ""),
+        name=(profile.get("name", "") or "")[:255],
+        email=(profile.get("email", "") or "")[:255],
+        phone=(profile.get("phone", "") or "")[:64],
         skills=json.dumps(skills),
         raw_text=resume_text,
         embedding=serialize(resume_embedding),
-        experience_years=profile.get("experience_years", "N/A"),
-        education_degree=education.get("highest_degree", "N/A"),
-        education_institution=education.get("institution", "N/A"),
-        education_year=education.get("graduation_year", "N/A"),
+        experience_years=(profile.get("experience_years", "N/A") or "N/A")[:64],
+        education_degree=(education.get("highest_degree", "N/A") or "N/A")[:255],
+        education_institution=(education.get("institution", "N/A") or "N/A")[:255],
+        education_year=(education.get("graduation_year", "N/A") or "N/A")[:32],
         certifications=json.dumps(certifications),
         strengths=match["strengths"],
         weaknesses=match["weaknesses"],
-        education_match=match["education_match"],
-        certification_match=match["certification_match"],
+        education_match=match["education_match"][:64],
+        certification_match=match["certification_match"][:64],
         score=match["score"],
         matched_skills=json.dumps(match["matched_skills"]),
         missing_skills=json.dumps(match["missing_skills"]),

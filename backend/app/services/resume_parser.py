@@ -10,11 +10,27 @@ AI provider (local heuristics by default, OpenAI if configured).
 from __future__ import annotations
 
 import io
+import re
 from typing import Dict
 
 from pypdf import PdfReader
 
 from app.services.ai.provider import get_provider
+
+# Strip NUL and other C0/C1 control characters (except tab/newline/carriage
+# return). PostgreSQL rejects NUL (0x00) bytes in text columns, so failing to
+# clean extracted PDF text causes the INSERT to throw a 500 -- only on Postgres,
+# not SQLite, which is why it slips past local tests.
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def clean_text(text: str) -> str:
+    """Remove control characters that would break a DB insert; keep Unicode."""
+    if not text:
+        return ""
+    cleaned = _CONTROL_CHARS_RE.sub("", str(text))
+    # Collapse runs of spaces introduced by stripping.
+    return re.sub(r"[ \t]{2,}", " ", cleaned).strip()
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -34,7 +50,7 @@ def parse_resume(file_bytes: bytes, content_type: str = "") -> Dict:
     crash the request. We try PDF extraction first; for genuine PDFs that yield
     no text we leave ``raw_text`` empty (so the caller can return a friendly
     "couldn't read this file" message). For non-PDF uploads we decode the bytes
-    as plain text.
+    as plain text. All extracted text is sanitized so it is safe to store.
     """
     is_pdf = "pdf" in (content_type or "").lower() or file_bytes[:5] == b"%PDF-"
 
@@ -54,7 +70,10 @@ def parse_resume(file_bytes: bytes, content_type: str = "") -> Dict:
         except Exception:
             raw_text = ""
 
-    # 3) Extract structured fields (never raises for empty input).
+    # 3) Sanitize before any downstream use / storage.
+    raw_text = clean_text(raw_text)
+
+    # 4) Extract structured fields (never raises for empty input).
     try:
         fields = get_provider().extract_resume_fields(raw_text)
     except Exception:

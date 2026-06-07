@@ -156,3 +156,32 @@ def test_unreadable_pdf_returns_clean_error(client, auth_headers):
     r = client.post(f"/api/jobs/{job_id}/candidates", files=files, headers=auth_headers)
     assert r.status_code == 422
     assert "extract" in r.json()["detail"].lower()
+
+
+
+def test_text_is_sanitized_for_db():
+    """Extracted text must have NUL/control chars stripped (Postgres safety)."""
+    from app.services.resume_parser import clean_text
+
+    dirty = "Asha\x00 Verma\x07\nPython\x1f Developer"
+    cleaned = clean_text(dirty)
+    assert "\x00" not in cleaned
+    assert "\x07" not in cleaned
+    assert "\x1f" not in cleaned
+    assert "Asha" in cleaned and "Python" in cleaned
+
+
+def test_upload_with_control_chars_succeeds(client, auth_headers):
+    """A resume containing NUL/control bytes must not 500 (it should store)."""
+    r = client.post(
+        "/api/jobs",
+        json={"title": "Y", "description": "Python", "required_skills": "Python",
+              "shortlist_count": 1},
+        headers=auth_headers,
+    )
+    job_id = r.json()["id"]
+    dirty = b"Asha Verma\x00\nasha@e.com\nSkills: Python\x07, Docker\x1f\n"
+    files = {"file": ("dirty.txt", io.BytesIO(dirty), "text/plain")}
+    r = client.post(f"/api/jobs/{job_id}/candidates", files=files, headers=auth_headers)
+    assert r.status_code == 201
+    assert "python" in r.json()["skills"]
