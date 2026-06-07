@@ -11,12 +11,12 @@ questions** tailored to each candidate.
 
 ## 🔗 Live Demo
 
-- **App:** _<!-- TODO: paste your Vercel frontend URL here -->_
-- **API docs:** _<!-- TODO: paste your Render backend URL + /docs here -->_
+- **App:** https://resu-mate-pro.vercel.app
+- **API docs:** https://resumate-pro-api.onrender.com/docs
 
 > The demo backend runs in **lite mode** (a torch-free embedding backend) so it
 > fits comfortably on free hosting tiers. First request after idle may be slow
-> while the free instance wakes up.
+> (~30–50s) while the free Render instance wakes up.
 
 ---
 
