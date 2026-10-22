@@ -162,17 +162,24 @@ CI (GitHub Actions) runs backend lint + tests and a frontend build on every push
 
 Deploy the **backend + database on Render** and the **frontend on Vercel**.
 
-### 1. Backend + Postgres → Render (via included `render.yaml`)
+### 1. Database → a non-expiring free Postgres
 
-1. Push this repo to GitHub (done).
-2. Go to [Render](https://render.com) → **New** → **Blueprint** → connect this repo.
-3. Render reads `render.yaml` and provisions:
-   - a free **Postgres** database, and
-   - the **API** web service (installs `requirements-deploy.txt`, runs in torch-free `lite` mode).
-4. When it finishes, copy the service URL, e.g. `https://resumate-pro-api.onrender.com`.
-   Visit `/docs` on it to confirm the API is live.
+> ⚠️ Don't use Render's free Postgres for the demo: it **expires 30 days after
+> creation** and is then deleted, which takes the whole API down.
 
-### 2. Frontend → Vercel
+Create a free database on [Neon](https://neon.tech) (or Prisma Postgres) and copy
+its connection string, e.g. `postgresql://user:pass@host/db?sslmode=require`.
+
+### 2. Backend → Render (via included `render.yaml`)
+
+1. Go to [Render](https://render.com) → **New** → **Blueprint** → connect this repo.
+2. Render reads `render.yaml` and creates the **API** web service (installs
+   `requirements-deploy.txt`, runs in torch-free `lite` mode). When prompted,
+   paste the connection string from step 1 into `DATABASE_URL`.
+3. When it finishes, copy the service URL, e.g. `https://resumate-pro-api.onrender.com`.
+   Visit `/health` on it — `"database_status": "ok"` confirms the DB is connected.
+
+### 3. Frontend → Vercel
 
 1. Go to [Vercel](https://vercel.com) → **Add New Project** → import this repo.
 2. Set **Root Directory** to `frontend`.
@@ -180,7 +187,7 @@ Deploy the **backend + database on Render** and the **frontend on Vercel**.
    - `NEXT_PUBLIC_API_URL` = your Render backend URL (from step 1, no trailing slash).
 4. Deploy. Copy the resulting URL, e.g. `https://resumate-pro.vercel.app`.
 
-### 3. Wire them together
+### 4. Wire them together
 
 - Paste both URLs into the **Live Demo** section at the top of this README.
 - (Optional, tighter security) On Render, set `CORS_ORIGINS` to your exact Vercel
