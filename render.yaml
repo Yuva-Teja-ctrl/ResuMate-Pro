@@ -24,11 +24,10 @@ services:
       # For production, set this to your exact frontend URL instead.
       - key: CORS_ORIGINS
         value: "*"
+      # Render's free Postgres expires 30 days after creation (then is deleted),
+      # which takes the whole API down. Use a non-expiring Postgres instead
+      # (e.g. Neon or Prisma Postgres free tier) and paste its connection
+      # string here in the Render dashboard. "postgres://" and "postgresql://"
+      # URLs are both accepted; keep "?sslmode=require" if the provider adds it.
       - key: DATABASE_URL
-        fromDatabase:
-          name: resumate-pro-db
-          property: connectionString
-
-databases:
-  - name: resumate-pro-db
-    plan: free
+        sync: false

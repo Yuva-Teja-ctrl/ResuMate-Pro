@@ -66,6 +66,10 @@ function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
+// Auth endpoints return 401 for bad credentials; those should surface as a
+// normal error rather than trigger a logout redirect.
+const AUTH_PATHS = ["/api/auth/login", "/api/auth/register"];
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -77,7 +81,24 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch {
+    // Network-level failure (server down, waking up, or CORS-blocked).
+    throw new Error(
+      "Cannot reach the server. It may be waking up — please wait ~30 seconds and try again."
+    );
+  }
+
+  // Stale/invalid token (e.g. the account no longer exists): clear it and
+  // send the user back to login instead of leaving them stuck on an error.
+  if (res.status === 401 && !AUTH_PATHS.includes(path) && typeof window !== "undefined") {
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+    throw new Error("Your session has expired. Please log in again.");
+  }
+
   if (!res.ok) {
     let detail = res.statusText;
     try {
